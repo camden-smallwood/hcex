@@ -181,7 +181,7 @@ static void _byte_swap_data(
         definition->name);
 
     vassert(
-        codes[0] = _begin_bs_array,
+        codes[0] == _begin_bs_array,
         "%s bs data @%p.#0 has bad start #%d",
         definition->name,
         codes,
