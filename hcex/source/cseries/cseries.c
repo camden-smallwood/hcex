@@ -67,6 +67,10 @@ const real_rgb_color *global_real_rgb_darkgreen = &private_real_argb_colors[14].
 const real_rgb_color *global_real_rgb_salmon = &private_real_argb_colors[15].rgb;
 const real_rgb_color *global_real_rgb_violet = &private_real_argb_colors[16].rgb;
 
+/* ---------- public variables */
+
+char temporary[256];
+
 /* ---------- public code */
 
 void cseries_initialize(

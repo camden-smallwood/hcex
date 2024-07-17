@@ -7,7 +7,7 @@
 /* ---------- public code */
 
 void dynamic_array_new(
-    dynamic_array *array,
+    struct dynamic_array *array,
     size_t element_size)
 {
     assert(array);
@@ -19,7 +19,7 @@ void dynamic_array_new(
 }
 
 bool dynamic_array_resize(
-    dynamic_array *array,
+    struct dynamic_array *array,
     size_t count)
 {
     assert(array);
@@ -46,7 +46,7 @@ bool dynamic_array_resize(
 }
 
 void dynamic_array_delete(
-    dynamic_array *array)
+    struct dynamic_array *array)
 {
     assert(array);
     assert(array->element_size > 0);
@@ -63,7 +63,7 @@ void dynamic_array_delete(
 }
 
 int dynamic_array_add_element(
-    dynamic_array *array)
+    struct dynamic_array *array)
 {
     assert(array);
     assert(array->element_size > 0);
@@ -89,7 +89,7 @@ int dynamic_array_add_element(
 }
 
 void *dynamic_array_get_element(
-    const dynamic_array *array,
+    const struct dynamic_array *array,
     int index,
     size_t element_size)
 {
@@ -98,20 +98,20 @@ void *dynamic_array_get_element(
     assert(array->element_size == element_size);
     assert(array->count > 0);
     assert((array->count != 0) == (array->elements != NULL));
-    assert(index >= 0 && index < array->count);
+    assert(index >= 0 && (size_t)index < array->count);
 
     return (uint8_t *)array->elements + (array->element_size * index);
 }
 
 void dynamic_array_delete_element(
-    dynamic_array *array,
+    struct dynamic_array *array,
     int index)
 {
     assert(array);
     assert(array->element_size > 0);
     assert(array->count > 0);
     assert((array->count != 0) == (array->elements != NULL));
-    assert(index >= 0 && index < array->count);
+    assert(index >= 0 && (size_t)index < array->count);
 
     size_t new_count = array->count - 1;
     array->count = new_count;
@@ -220,7 +220,7 @@ void *static_array_get_element(
     assert(count > 0);
     assert(elements);
     assert(element_size > 0);
-    assert(index >= 0 && index < count);
+    assert(index >= 0 && (size_t)index < count);
 
     return (uint8_t *)elements + element_size * index;
 }
@@ -235,7 +235,7 @@ void static_array_delete_element(
     assert(*count >= 0);
     assert(elements);
     assert(element_size > 0);
-    assert(index >= 0 && index < *count);
+    assert(index >= 0 && (size_t)index < *count);
 
     size_t new_count = --(*count);
 
