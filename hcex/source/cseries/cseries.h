@@ -40,13 +40,13 @@
 #   define vassert(x, fmt, ...) do { \
         if (!(x)) \
         { \
-            display_assert(csprintf(temporary, fmt, __VA_ARGS__), __FILE__, __LINE__, true); \
+            display_assert(csprintf(temporary, fmt __VA_OPT__(,) __VA_ARGS__), __FILE__, __LINE__, true); \
             system_exit(NONE); \
         } \
     } while (false)
 #else
-#   define assert(x)
-#   define vassert(x, fmt, ...)
+#   define assert(x) (void)(x)
+#   define vassert(x, fmt, ...) (void)(x)
 #endif
 
 #define UNUSED(x) ((void)(x))
