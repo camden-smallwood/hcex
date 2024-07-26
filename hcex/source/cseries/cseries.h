@@ -4,7 +4,17 @@
 #include <stdint.h>
 #include <limits.h>
 
+#include "platform.h"
+
 /* ---------- macros */
+
+#ifndef true
+#define true 1
+#endif
+
+#ifndef false
+#define false 0
+#endif
 
 #ifndef __has_builtin
 #   error unsupported compiler, __has_builtin not defined

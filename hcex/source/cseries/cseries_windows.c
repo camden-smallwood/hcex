@@ -75,7 +75,7 @@ void system_timer_init(
 {
 #ifdef _WIN32
 
-    QueryPerformanceFrequency(&s_ClockFrequency);
+    assert(QueryPerformanceFrequency(&s_ClockFrequency));
 
 #elif defined(__APPLE__) && defined(__MACH__)
 
@@ -90,17 +90,14 @@ uint32_t system_seconds(
     void)
 {
 #ifdef _WIN32
-#   warning TODO: check if this is correct
-    
-    if (s_ClockFrequency.LowPart == 0)
-    {
-        QueryPerformanceFrequency(&s_ClockFrequency);
-    }
 
-    LARGE_INTEGER v1;
-    QueryPerformanceCounter(&v1);
+    if (s_ClockFrequency.QuadPart == 0)
+        assert(QueryPerformanceFrequency(&s_ClockFrequency));
 
-    return (uint32_t)(v1.QuadPart / ((((int64_t)v1.LowPart) << 32) | (uint32_t)s_ClockFrequency.LowPart));
+    LARGE_INTEGER now;
+    QueryPerformanceCounter(&now);
+
+    return (uint32_t)(now.QuadPart / (double)s_ClockFrequency.QuadPart);
 
 #elif defined(__APPLE__) && defined(__MACH__)
 #   warning TODO: check if this is correct
@@ -116,17 +113,14 @@ uint32_t system_milliseconds(
     void)
 {
 #ifdef _WIN32
-#   warning TODO: check if this is correct
-    
-    if (s_ClockFrequency.LowPart == 0)
-    {
-        QueryPerformanceFrequency(&s_ClockFrequency);
-    }
 
-    LARGE_INTEGER v2;
-    QueryPerformanceCounter(v2);
+    if (s_ClockFrequency.QuadPart == 0)
+        assert(QueryPerformanceFrequency(&s_ClockFrequency));
 
-    return (1000 * s_ClockFrequency.HighPart) / s_ClockFrequency.QuadPart;
+    LARGE_INTEGER now;
+    QueryPerformanceCounter(&now);
+
+    return (uint32_t)((now.QuadPart * 1000) / (double)s_ClockFrequency.QuadPart);
 
 #elif defined(__APPLE__) && defined(__MACH__)
 #   warning TODO: check if this is correct
@@ -142,21 +136,14 @@ uint64_t system_microseconds(
     void)
 {
 #ifdef _WIN32
-#   warning TODO: check if this is correct
 
-    if (s_ClockFrequency.LowPart == 0)
-    {
-        QueryPerformanceFrequency(&s_ClockFrequency);
-    }
+    if (s_ClockFrequency.QuadPart == 0)
+        assert(QueryPerformanceFrequency(&s_ClockFrequency));
 
-    LARGE_INTEGER v2;
-    QueryPerformanceCounter(&v2);
+    LARGE_INTEGER now;
+    QueryPerformanceCounter(&now);
 
-    HIDWORD(v0) = v2.LowPart;
-    LODWORD(v0) = 1000000;
-    *(unsigned __int64 *)((char *)&result + 4) = (unsigned __int64)(v2.QuadPart * v0) / s_ClockFrequency.QuadPart;
-
-    return result;
+    return (uint64_t)((now.QuadPart * 1000000) / (double)s_ClockFrequency.QuadPart);
 
 #elif defined(__APPLE__) && defined(__MACH__)
 #   warning TODO: check if this is correct

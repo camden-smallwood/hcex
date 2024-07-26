@@ -41,22 +41,19 @@ enum /* file permission flags */
 
 /* ---------- structures */
 
-struct file_reference_info
+struct file_reference
 {
     tag signature;
     uint16_t flags;
     int16_t location;
+
     char path[MAXIMUM_FILENAME_LENGTH + 1];
-};
 
-enum
-{
-    FILE_REFERENCE_SIZE = sizeof(struct file_reference_info),
-};
-
-struct file_reference
-{
-    char data[FILE_REFERENCE_SIZE];
+#if defined(PLATFORM_WINDOWS)
+    HANDLE handle;
+#elif defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
+    int fd;
+#endif
 };
 
 struct file_last_modification_date
@@ -68,7 +65,8 @@ struct file_last_modification_date
 
 void file_location_set_volume(int location, const char *volume_name);
 
-struct file_reference_info *file_reference_get_info(struct file_reference *reference);
+void file_reference_verify(struct file_reference *file);
+
 struct file_reference *file_reference_create(struct file_reference *reference, int location);
 struct file_reference *file_reference_create_from_path(struct file_reference *reference, const char *path, bool directory);
 struct file_reference *file_reference_create_from_path_absolute(struct file_reference *reference, const char *path, bool directory);

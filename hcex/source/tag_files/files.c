@@ -34,6 +34,15 @@ static char file_location_volume_names[NUMBER_OF_FILE_REFERENCE_LOCATIONS][MAXIM
 
 /* ---------- public code */
 
+void file_reference_verify(
+    struct file_reference *file)
+{
+    assert(file);
+    assert(file->signature == FILE_REFERENCE_SIGNATURE);
+    assert(VALID_FLAGS(file->flags, NUMBER_OF_REFERENCE_INFO_FLAGS));
+    assert(file->location >= NONE && file->location < NUMBER_OF_FILE_REFERENCE_LOCATIONS);
+}
+
 void file_location_set_volume(
     int location,
     const char *volume_name)
@@ -46,19 +55,6 @@ void file_location_set_volume(
     file_location_volume_names[location][MAXIMUM_FILENAME_LENGTH] = '\0';
 }
 
-struct file_reference_info *file_reference_get_info(
-    struct file_reference *reference)
-{
-    struct file_reference_info *info = (struct file_reference_info *)reference;
-
-    assert(info);
-    assert(info->signature == FILE_REFERENCE_SIGNATURE);
-    assert(VALID_FLAGS(info->flags, NUMBER_OF_REFERENCE_INFO_FLAGS));
-    assert(info->location >= NONE && info->location < NUMBER_OF_FILE_REFERENCE_LOCATIONS);
-
-    return info;
-}
-
 struct file_reference *file_reference_create(
     struct file_reference *reference,
     int location)
@@ -68,9 +64,8 @@ struct file_reference *file_reference_create(
 
     memset(reference, 0, sizeof(struct file_reference));
 
-    struct file_reference_info *info = (struct file_reference_info *)reference->data;
-    info->location = location;
-    info->signature = FILE_REFERENCE_SIGNATURE;
+    reference->location = location;
+    reference->signature = FILE_REFERENCE_SIGNATURE;
 
     return reference;
 }
@@ -84,12 +79,11 @@ struct file_reference *file_reference_create_from_path(
 
     memset(reference, 0, sizeof(struct file_reference));
 
-    struct file_reference_info *info = (struct file_reference_info *)reference->data;
-    info->location = NONE;
-    info->signature = FILE_REFERENCE_SIGNATURE;
+    reference->location = NONE;
+    reference->signature = FILE_REFERENCE_SIGNATURE;
 
     if (directory)
-        file_path_add_name(info->path, path);
+        file_path_add_name(reference->path, path);
     else
         file_reference_set_name(reference, path);
 
@@ -105,12 +99,11 @@ struct file_reference *file_reference_create_from_path_absolute(
 
     memset(reference, 0, sizeof(struct file_reference));
 
-    struct file_reference_info *info = (struct file_reference_info *)reference->data;
-    info->location = _file_reference_absolute;
-    info->signature = FILE_REFERENCE_SIGNATURE;
+    reference->location = _file_reference_absolute;
+    reference->signature = FILE_REFERENCE_SIGNATURE;
 
     if (directory)
-        file_path_add_name(info->path, path);
+        file_path_add_name(reference->path, path);
     else
         file_reference_set_name(reference, path);
 
@@ -121,7 +114,7 @@ struct file_reference *file_reference_copy(
     struct file_reference *destination,
     const struct file_reference *source)
 {
-    file_reference_get_info((struct file_reference *)source);
+    file_reference_verify((struct file_reference *)source);
 
     memcpy(destination, source, sizeof(struct file_reference));
 
@@ -132,12 +125,12 @@ struct file_reference *file_reference_add_directory(
     struct file_reference *reference,
     const char *directory)
 {
-    struct file_reference_info *info = file_reference_get_info(reference);
+    file_reference_verify(reference);
 
     assert(directory);
-    assert(!TEST_FLAG(info->flags, _has_filename_bit));
+    assert(!TEST_FLAG(reference->flags, _has_filename_bit));
 
-    file_path_add_name(&reference->data[8], directory);
+    file_path_add_name(reference->path, directory);
 
     return reference;
 }
@@ -146,16 +139,16 @@ struct file_reference *file_reference_set_name(
     struct file_reference *reference,
     const char *name)
 {
-    struct file_reference_info *info = file_reference_get_info(reference);
+    file_reference_verify(reference);
 
     assert(name);
 
-    if (TEST_FLAG(info->flags, _has_filename_bit))
-        file_path_remove_name(info->path);
+    if (TEST_FLAG(reference->flags, _has_filename_bit))
+        file_path_remove_name(reference->path);
 
-    file_path_add_name(info->path, name);
+    file_path_add_name(reference->path, name);
 
-    SET_FLAG(info->flags, _has_filename_bit, true);
+    SET_FLAG(reference->flags, _has_filename_bit, true);
 
     return reference;
 }
@@ -163,7 +156,9 @@ struct file_reference *file_reference_set_name(
 int file_reference_get_location(
     const struct file_reference *reference)
 {
-    return file_reference_get_info((struct file_reference *)reference)->location;
+    file_reference_verify((struct file_reference *)reference);
+
+    return reference->location;
 }
 
 char *file_reference_get_name(
@@ -171,10 +166,10 @@ char *file_reference_get_name(
     unsigned int flags,
     char *name)
 {
-    struct file_reference_info *info = file_reference_get_info((struct file_reference *)reference);
+    file_reference_verify((struct file_reference *)reference);
 
     assert(name);
-    assert(VALID_FLAGS(info->flags, NUMBER_OF_NAME_FLAGS));
+    assert(VALID_FLAGS(reference->flags, NUMBER_OF_NAME_FLAGS));
     assert(flags);
     assert(flags != (FLAG(_name_directory_bit) | FLAG(_name_extension_bit)));
     assert(!TEST_FLAG(flags, _name_directory_bit) || !TEST_FLAG(flags, _name_parent_directory_bit));
@@ -182,7 +177,7 @@ char *file_reference_get_name(
     char full_path[MAXIMUM_FILENAME_LENGTH];
     memset(full_path, 0, sizeof(full_path));
 
-    file_location_get_full_path(info->location, info->path, full_path);
+    file_location_get_full_path(reference->location, (char *)reference->path, full_path);
 
     char *directory, *parent_directory, *filename, *extension;
     file_path_split(
@@ -191,7 +186,7 @@ char *file_reference_get_name(
         &parent_directory,
         &filename,
         &extension,
-        TEST_FLAG(info->flags, _has_filename_bit));
+        TEST_FLAG(reference->flags, _has_filename_bit));
 
     *name = '\0';
 
@@ -214,10 +209,11 @@ bool file_references_equal(
     const struct file_reference *reference0,
     const struct file_reference *reference1)
 {
-    struct file_reference_info *info0 = file_reference_get_info((struct file_reference *)reference0);
-    struct file_reference_info *info1 = file_reference_get_info((struct file_reference *)reference1);
+    file_reference_verify((struct file_reference *)reference0);
+    file_reference_verify((struct file_reference *)reference1);
 
-    return info0->location == info1->location && strcmp(info0->path, info1->path) == 0;
+    return reference0->location == reference1->location
+        && strcmp(reference0->path, reference1->path) == 0;
 }
 
 size_t find_files(
@@ -297,11 +293,10 @@ void directory_create_or_delete_contents(
     struct file_reference reference;
     memset(&reference, 0, sizeof(reference));
 
-    struct file_reference_info *info = (struct file_reference_info *)reference.data;
-    info->location = NONE;
-    info->signature = FILE_REFERENCE_SIGNATURE;
+    reference.location = NONE;
+    reference.signature = FILE_REFERENCE_SIGNATURE;
 
-    file_path_add_name(info->path, directory_name);
+    file_path_add_name(reference.path, directory_name);
 
     if (file_exists(&reference))
     {
@@ -332,9 +327,8 @@ bool datastore_read(
     struct file_reference reference;
     memset(&reference, 0, sizeof(reference));
 
-    struct file_reference_info *info = (struct file_reference_info *)reference.data;
-    info->location = NONE;
-    info->signature = FILE_REFERENCE_SIGNATURE;
+    reference.location = NONE;
+    reference.signature = FILE_REFERENCE_SIGNATURE;
 
     file_reference_set_name(&reference, file_name);
 
@@ -371,6 +365,7 @@ bool datastore_read(
 
     free(datastore);
     file_delete(&reference);
+
     return false;
 }
 
@@ -390,9 +385,8 @@ bool datastore_write(
     struct file_reference reference;
     memset(&reference, 0, sizeof(reference));
 
-    struct file_reference_info *info = (struct file_reference_info *)reference.data;
-    info->location = NONE;
-    info->signature = FILE_REFERENCE_SIGNATURE;
+    reference.location = NONE;
+    reference.signature = FILE_REFERENCE_SIGNATURE;
 
     file_reference_set_name(&reference, file_name);
 
