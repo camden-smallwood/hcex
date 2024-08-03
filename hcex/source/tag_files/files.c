@@ -35,7 +35,7 @@ static char file_location_volume_names[NUMBER_OF_FILE_REFERENCE_LOCATIONS][MAXIM
 /* ---------- public code */
 
 void file_reference_verify(
-    struct file_reference *file)
+    const struct file_reference *file)
 {
     assert(file);
     assert(file->signature == FILE_REFERENCE_SIGNATURE);
@@ -114,7 +114,7 @@ struct file_reference *file_reference_copy(
     struct file_reference *destination,
     const struct file_reference *source)
 {
-    file_reference_verify((struct file_reference *)source);
+    file_reference_verify(source);
 
     memcpy(destination, source, sizeof(struct file_reference));
 
@@ -156,7 +156,7 @@ struct file_reference *file_reference_set_name(
 int file_reference_get_location(
     const struct file_reference *reference)
 {
-    file_reference_verify((struct file_reference *)reference);
+    file_reference_verify(reference);
 
     return reference->location;
 }
@@ -166,7 +166,7 @@ char *file_reference_get_name(
     unsigned int flags,
     char *name)
 {
-    file_reference_verify((struct file_reference *)reference);
+    file_reference_verify(reference);
 
     assert(name);
     assert(VALID_FLAGS(reference->flags, NUMBER_OF_NAME_FLAGS));
@@ -209,8 +209,8 @@ bool file_references_equal(
     const struct file_reference *reference0,
     const struct file_reference *reference1)
 {
-    file_reference_verify((struct file_reference *)reference0);
-    file_reference_verify((struct file_reference *)reference1);
+    file_reference_verify(reference0);
+    file_reference_verify(reference1);
 
     return reference0->location == reference1->location
         && strcmp(reference0->path, reference1->path) == 0;

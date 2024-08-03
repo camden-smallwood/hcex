@@ -6,6 +6,7 @@
 
 #include "cseries/cseries.h"
 #include "cseries/cseries_windows.h"
+#include "cseries/errors.h"
 #include "memory/crc.h"
 
 /* ---------- global colors */
@@ -324,6 +325,15 @@ void display_assert(
     UNUSED(line);
     UNUSED(fatal);
 #else
-#   warning TODO: reference other platform implementations
+    if (fatal)
+        stack_walk(0);
+    
+    error(
+        _error_message_priority_assert,
+        "EXCEPTION %s in %s,#%d: %s",
+        fatal ? "halt" : "warn",
+        file,
+        line,
+        information ? information : "<no reason given>");
 #endif
 }

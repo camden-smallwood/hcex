@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.5.0)
 project(hcex)
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 set(HCEX_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/hcex/source/")
 file(GLOB_RECURSE HCEX_C_SOURCE_FILES "hcex/source/*.c")
 file(GLOB_RECURSE HCEX_CXX_SOURCE_FILES "hcex/source/*.cpp")

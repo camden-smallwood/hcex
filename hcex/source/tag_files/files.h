@@ -65,7 +65,7 @@ struct file_last_modification_date
 
 void file_location_set_volume(int location, const char *volume_name);
 
-void file_reference_verify(struct file_reference *file);
+void file_reference_verify(const struct file_reference *file);
 
 struct file_reference *file_reference_create(struct file_reference *reference, int location);
 struct file_reference *file_reference_create_from_path(struct file_reference *reference, const char *path, bool directory);

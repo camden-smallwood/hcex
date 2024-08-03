@@ -562,6 +562,9 @@ void cseries_platform_initialize(void);
 
 void system_exit(int code);
 
+uint32_t system_get_error_code(void);
+void system_set_error_code(uint32_t error_code);
+
 void system_unique_identifier_get(struct system_unique_identifier *identifier);
 bool system_unique_identifiers_equal(const struct system_unique_identifier *identifier1, const struct system_unique_identifier *identifier2);
 

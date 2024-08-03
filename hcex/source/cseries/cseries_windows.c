@@ -8,7 +8,9 @@
 #   include <winbase.h>
 #   include <winnt.h>
 #   include <profileapi.h>
+#   include <errhandlingapi.h>
 #elif defined(__APPLE__) && defined(__MACH__)
+#   include <errno.h>
 #   include <mach/mach_time.h>
 #else
 #   error unsupported platform
@@ -52,6 +54,30 @@ void system_exit(
     int code)
 {
     exit(code);
+}
+
+uint32_t system_get_error_code(
+    void)
+{
+#if defined(PLATFORM_WINDOWS)
+    return (uint32_t)GetLastError();
+#elif defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
+    return (uint32_t)errno;
+#else
+#   error unsupported platform
+#endif
+}
+
+void system_set_error_code(
+    uint32_t error_code)
+{
+#if defined(PLATFORM_WINDOWS)
+    SetLastError((DWORD)error_code);
+#elif defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
+    errno = (int)error_code;
+#else
+#   error unsupported platform
+#endif
 }
 
 void system_unique_identifier_get(
