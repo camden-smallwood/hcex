@@ -8,6 +8,9 @@
 const char *tag_name_strip_path(
     const char *name)
 {
+    assert(name);
+    
     char *s = strrchr(name, '\\');
+
     return s ? s + 1 : name;
 }

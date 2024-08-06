@@ -58,7 +58,11 @@ struct file_reference
 
 struct file_last_modification_date
 {
-    char data[8];
+#if defined(PLATFORM_WINDOWS)
+    FILETIME filetime;
+#elif defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
+    struct timespec timespec;
+#endif
 };
 
 /* ---------- prototypes/FILES.C */

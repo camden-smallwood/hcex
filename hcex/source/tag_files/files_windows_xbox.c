@@ -380,7 +380,7 @@ uint64_t file_get_position(
         error(
             _error_message_priority_assert,
             "%s('%s') error 0x%08x",
-            "file_get_position",
+            __FUNCTION__,
             file->path,
             GetLastError());
 
@@ -413,12 +413,17 @@ bool file_set_position(
     file_reference_verify(file);
 
 #if defined(PLATFORM_WINDOWS)
-#warning TODO: construct proper `lpDistanceToMoveHigh` if necessary
-    if (SetFilePointer(file->handle, position, 0, FILE_BEGIN) != INVALID_SET_FILE_POINTER)
+
+    LARGE_INTEGER distance = { .QuadPart = (LONGLONG)position };
+
+    if (SetFilePointerEx(file->handle, distance, NULL, FILE_BEGIN))
         return true;
+    
 #elif defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
+
     if (lseek(file->fd, position, SEEK_SET) >= 0)
         return true;
+    
 #else
 #error unsupported platform
 #endif
@@ -435,17 +440,239 @@ bool file_set_position(
     return false;
 }
 
-uint64_t file_get_eof(const struct file_reference *file);
-bool file_set_eof(const struct file_reference *file, uint64_t position);
+uint64_t file_get_eof(
+    const struct file_reference *file)
+{
+    file_reference_verify(file);
 
-bool file_read(const struct file_reference *file, size_t count, void *buffer);
-bool file_write(const struct file_reference *file, size_t count, const void *buffer);
+#if defined(PLATFORM_WINDOWS)
 
-bool file_read_from_position(const struct file_reference *file, uint64_t position, size_t count, void *buffer);
-bool file_write_to_position(const struct file_reference *file, uint64_t position, size_t count, const void *buffer);
+    LARGE_INTEGER result;
 
-bool file_get_last_modification_date(const struct file_reference *file, struct file_last_modification_date *date);
-int file_compare_last_modification_dates(struct file_last_modification_date *date1, struct file_last_modification_date *date2);
+    if (GetFileSizeEx(file->handle, &result))
+        return (uint64_t)result.QuadPart;
+
+#elif defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
+
+    struct stat buf;
+
+    if (fstat(file->fd, &buf) >= 0)
+        return (uint64_t)buf.st_size;
+
+#else
+#error unsupported platform
+#endif
+
+    error(
+        _error_message_priority_assert,
+        "%s('%s') error 0x%08x",
+        __FUNCTION__,
+        file->path,
+        system_get_error_code());
+    
+    system_set_error_code(0);
+
+    return 0;
+}
+
+bool file_set_eof(
+    const struct file_reference *file,
+    uint64_t position)
+{
+    file_reference_verify(file);
+
+    if (!file_set_position(file, position))
+        return false;
+
+#if defined(PLATFORM_WINDOW)
+    
+    if (SetEndOfFile(file->handle))
+        return true;
+    
+#elif defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
+
+    if (ftruncate(file->fd, (off_t)position) >= 0)
+        return true;
+    
+#else
+#error unsupported platform
+#endif
+
+    error(
+        _error_message_priority_assert,
+        "%s('%s') error 0x%08x",
+        __FUNCTION__,
+        file->path,
+        system_get_error_code());
+
+    system_set_error_code(0);
+
+    return false;
+}
+
+bool file_read(
+    const struct file_reference *file,
+    size_t count,
+    void *buffer)
+{
+    file_reference_verify(file);
+    assert(buffer);
+
+    for (;;)
+    {
+#if defined(PLATFORM_WINDOWS)
+        DWORD bytes_read = 0;
+
+        if (!ReadFile(file->handle, buffer, count, &bytes_read, NULL))
+            break;
+        
+        if (bytes_read == 0)
+        {
+            SetLastError(ERROR_HANDLE_EOF);
+            break;
+        }
+#elif defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
+        ssize_t bytes_read = read(file->fd, buffer, count);
+
+        if (bytes_read < 0)
+            break;
+#else
+#error unsupported platform
+#endif
+
+        count -= (size_t)bytes_read;
+        buffer = (char *)buffer + bytes_read;
+
+        if (count == 0)
+            return true;
+    }
+
+    error(
+        _error_message_priority_assert,
+        "%s('%s') error 0x%08x",
+        __FUNCTION__,
+        file->path,
+        system_get_error_code());
+    
+    system_set_error_code(0);
+
+    return false;
+}
+
+bool file_write(
+    const struct file_reference *file,
+    size_t count,
+    const void *buffer)
+{
+    file_reference_verify(file);
+    assert(buffer);
+
+    for (;;)
+    {
+#if defined(PLATFORM_WINDOWS)
+        DWORD bytes_written = 0;
+
+        if (!WriteFile(file->handle, buffer, count, &bytes_written, NULL))
+            break;
+#elif defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
+        ssize_t bytes_written = write(file->fd, buffer, count);
+
+        if (bytes_written < 0)
+            break;
+#else
+#error unsupported platform
+#endif
+
+        count -= (size_t)bytes_written;
+        buffer = (char *)buffer + bytes_written;
+
+        if (count == 0)
+            return true;
+    }
+    
+    error(
+        _error_message_priority_assert,
+        "%s('%s') error 0x%08x",
+        __FUNCTION__,
+        file->path,
+        system_get_error_code());
+    
+    system_set_error_code(0);
+
+    return false;
+}
+
+bool file_read_from_position(
+    const struct file_reference *file,
+    uint64_t position,
+    size_t count,
+    void *buffer)
+{
+    return file_set_position(file, position)
+        && file_read(file, count, buffer);
+}
+
+bool file_write_to_position(
+    const struct file_reference *file,
+    uint64_t position,
+    size_t count,
+    const void *buffer)
+{
+    return file_set_position(file, position)
+        && file_write(file, count, buffer);
+}
+
+bool file_get_last_modification_date(
+    const struct file_reference *file,
+    struct file_last_modification_date *date)
+{
+    file_reference_verify(file);
+
+    char full_path[MAXIMUM_FILENAME_LENGTH];
+    memset(full_path, 0, sizeof(full_path));
+
+    memset(date, 0, sizeof(*date));
+
+    file_location_get_full_path(file->location, file->path, full_path);
+
+#if defined(PLATFORM_WINDOWS)
+    WIN32_FILE_ATTRIBUTE_DATA file_information;
+
+    if (GetFileAttributesExA(full_path, GetFileExInfoStandard, &file_information))
+    {
+        memcpy(&date->filetime, &file_information.ftLastWriteTime, sizeof(date->filetime));
+        return true;
+    }
+#elif defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
+    struct stat buf;
+
+    if (stat(full_path, &buf) == 0)
+    {
+        memcpy(&date->timespec, &buf.st_mtimespec, sizeof(date->timespec));
+        return true;
+    }
+#else
+#error unsupported platform
+#endif
+    
+    error(
+        _error_message_priority_assert,
+        "%s('%s') error 0x%08x",
+        __FUNCTION__,
+        file->path,
+        system_get_error_code());
+    
+    system_set_error_code(0);
+
+    return false;
+}
+
+int file_compare_last_modification_dates(
+    struct file_last_modification_date *date1,
+    struct file_last_modification_date *date2)
+{
+    return memcmp(date1, date2, sizeof(*date1));
+}
 
 bool file_get_size(const struct file_reference *file, uint64_t *size);
 

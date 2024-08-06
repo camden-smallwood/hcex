@@ -8,8 +8,9 @@ char *tag_data_get_pointer(
     size_t offset,
     size_t size)
 {
-    // TODO: asserts
-    
+    assert(size >= 0);
+    assert(offset >= 0 && offset + size <= data->size);
+
     return (char *)data->address + offset;
 }
 
@@ -18,7 +19,18 @@ char *tag_block_get_element_with_size(
     intptr_t index,
     size_t element_size)
 {
-    // TODO: asserts
+    assert(block);
+    assert(block->count >= 0);
+    assert(!block->definition || block->definition->element_size == element_size);
+    
+    vassert(
+        index >= 0 && index < block->count,
+        "#%d is not a valid %s index in [#0,#%d)",
+        index,
+        block->definition ? block->definition->name : "<unknown>",
+        block->count);
+    
+    assert(block->address);
 
-    return (char *)block->address + index * element_size;
+    return (char *)block->address + element_size * index;
 }

@@ -15,8 +15,6 @@ static void build_crc_table(uint32_t *crc_table);
 void crc_new(
     uint32_t *crc_reference)
 {
-    // TODO: asserts
-    
     *crc_reference = NONE;
 }
 
@@ -25,8 +23,8 @@ void crc_checksum_buffer(
     const void *buffer,
     size_t buffer_size)
 {
-    // TODO: asserts
-    
+    assert(buffer_size >= 0);
+
     if (!crc_table_built)
     {
         build_crc_table(crc_table);
@@ -42,7 +40,7 @@ void crc_checksum_buffer(
 
         do
         {
-            v8 = (v8 >> 8) ^ *(uint32_t *)((char *)crc_table + ((sizeof(uint32_t) * ((uint8_t)*++v10 ^ v8)) & 0x3FC));
+            v8 = (v8 >> 8) ^ *(uint32_t *)((char *)crc_table + ((sizeof(uint32_t) * ((uint8_t) * ++v10 ^ v8)) & 0x3FC));
             --remaining_buffer_size;
         } while (remaining_buffer_size);
     }
@@ -55,8 +53,6 @@ void crc_checksum_buffer(
 static void build_crc_table(
     uint32_t *crc_table)
 {
-    // TODO: asserts
-    
     for (uint32_t i = 0; i < 256; i++)
     {
         uint32_t crc_word = i;
@@ -65,7 +61,7 @@ static void build_crc_table(
         {
             bool crc_word_bit_set = TEST_FLAG(crc_word, 0);
             crc_word >>= 1;
-            
+
             if (crc_word_bit_set)
             {
                 crc_word ^= 0xEDB88320;
