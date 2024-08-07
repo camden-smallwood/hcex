@@ -5,7 +5,7 @@ set(HCEX_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/hcex/source/")
 file(GLOB_RECURSE HCEX_C_SOURCE_FILES "hcex/source/*.c")
 file(GLOB_RECURSE HCEX_CXX_SOURCE_FILES "hcex/source/*.cpp")
 
-add_library(hcex ${HCEX_C_SOURCE_FILES} ${HCEX_CXX_SOURCE_FILES})
+add_executable(hcex ${HCEX_C_SOURCE_FILES} ${HCEX_CXX_SOURCE_FILES})
 
 set_property(TARGET hcex PROPERTY C_STANDARD 23)
 set_property(TARGET hcex PROPERTY C_STANDARD_REQUIRED ON)

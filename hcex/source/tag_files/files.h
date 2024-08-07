@@ -39,6 +39,13 @@ enum /* file permission flags */
     NUMBER_OF_PERMISSION_FLAGS
 };
 
+enum /* find files flags */
+{
+    _find_files_recursive_bit,
+    _find_files_enumerate_directories_bit,
+    NUMBER_OF_FIND_FILES_FLAGS
+};
+
 /* ---------- structures */
 
 struct file_reference

@@ -19,10 +19,23 @@
 #include <stdio.h>
 #include <string.h>
 
+/* ---------- private constants */
+
+enum
+{
+    FIRST_DRIVE_LETTER = 'A',
+    LAST_DRIVE_LETTER = 'Z',
+    DRIVE_NAME_LENGTH = 4,
+    DIRECTORY_SEPARATOR = '\\',
+    EXTENSION_SEPARATOR = '.',
+    BAD_FILE = NONE,
+    MAXIMUM_SEARCH_DEPTH = 8,
+};
+
 /* ---------- private variables */
 
 #if defined(PLATFORM_WINDOWS)
-char file_last_cd_drive_name[4];
+char file_last_cd_drive_name[DRIVE_NAME_LENGTH];
 #endif
 
 struct find_files_state
@@ -31,9 +44,9 @@ struct find_files_state
     short depth;
     short location;
     char path[MAXIMUM_FILENAME_LENGTH + 1];
-    void *handles[8];
 
 #if defined(PLATFORM_WINDOWS)
+    HANDLE handles[MAXIMUM_SEARCH_DEPTH];
     WIN32_FIND_DATAA data;
 #endif
 } find_files_globals;
@@ -633,14 +646,14 @@ bool file_get_last_modification_date(
 
     memset(date, 0, sizeof(*date));
 
-    file_location_get_full_path(file->location, file->path, full_path);
+    file_location_get_full_path(file->location, (char *)file->path, full_path);
 
 #if defined(PLATFORM_WINDOWS)
-    WIN32_FILE_ATTRIBUTE_DATA file_information;
+    WIN32_FILE_ATTRIBUTE_DATA file_attributes;
 
-    if (GetFileAttributesExA(full_path, GetFileExInfoStandard, &file_information))
+    if (GetFileAttributesExA(full_path, GetFileExInfoStandard, &file_attributes))
     {
-        memcpy(&date->filetime, &file_information.ftLastWriteTime, sizeof(date->filetime));
+        memcpy(&date->filetime, &file_attributes.ftLastWriteTime, sizeof(date->filetime));
         return true;
     }
 #elif defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
@@ -674,9 +687,83 @@ int file_compare_last_modification_dates(
     return memcmp(date1, date2, sizeof(*date1));
 }
 
-bool file_get_size(const struct file_reference *file, uint64_t *size);
+bool file_get_size(
+    const struct file_reference *file,
+    uint64_t *size)
+{
+    file_reference_verify(file);
+    assert(size);
+    
+    char full_path[MAXIMUM_FILENAME_LENGTH];
+    memset(full_path, 0, sizeof(full_path));
+    
+    file_location_get_full_path(file->location, (char *)file->path, full_path);
 
-void find_files_start(unsigned int flags, const struct file_reference *directory);
+#if defined(PLATFORM_WINDOWS)
+    WIN32_FILE_ATTRIBUTE_DATA file_attributes;
+
+    if (GetFileAttributesExA(full_path, GetFileExInfoStandard, &file_attributes))
+    {
+        #warning TODO: check nFileSizeHigh
+        *size = (uint64_t)file_attributes.nFileSizeLow;
+        return true;
+    }
+#elif defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
+    struct stat buf;
+
+    if (stat(full_path, &buf) == 0)
+    {
+        *size = (uint64_t)buf.st_size;
+        return true;
+    }
+#else
+#error unsupported platform
+#endif
+    
+    error(
+        _error_message_priority_assert,
+        "%s('%s') error 0x%08x",
+        __FUNCTION__,
+        file->path,
+        system_get_error_code());
+    
+    system_set_error_code(0);
+
+    return false;
+}
+
+void find_files_start(
+    unsigned int flags,
+    const struct file_reference *directory)
+{
+    file_reference_verify(directory);
+    assert(VALID_FLAGS(flags, NUMBER_OF_FIND_FILES_FLAGS));
+    assert(!TEST_FLAG(directory->flags, _has_filename_bit));
+
+#if defined(PLATFORM_WINDOWS)
+    for (int i = find_files_globals.depth; i >= 0; i--)
+    {
+        HANDLE *handle = &find_files_globals.handles[i];
+
+        if (*handle != INVALID_HANDLE)
+        {
+            CloseHandle(*handle);
+            *handle = INVALID_HANDLE;
+        }
+    }
+#elif defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
+#error TODO
+#else
+#error unsupported platform
+#endif
+    
+    find_files_globals.flags = flags;
+    find_files_globals.depth = 0;
+    find_files_globals.location = directory->location;
+
+    strcpy(find_files_globals.path, directory->path);
+}
+
 bool find_files_next(struct file_reference *file, struct file_last_modification_date *date);
 
 void file_path_add_name(char *path, const char *name);
